@@ -69,6 +69,7 @@ jobs:
           cordova plugin add cordova-plugin-fullscreen || true
           cordova plugin add cordova-plugin-vibration || true
           cordova plugin add cordova-plugin-device || true
+          cordova plugin add cordova-plugin-androidx-adapter || true
           cordova plugin add tapsell-v3-cordova-plugin || true
 
       - name: Build APK (debug, always works without signing)

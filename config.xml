@@ -1,0 +1,58 @@
+<?xml version='1.0' encoding='utf-8'?>
+<widget id="com.eilik.robots" version="1.0.0" xmlns="http://www.w3.org/ns/widgets" xmlns:android="http://schemas.android.com/apk/res/android">
+    <name>Eilik Robots</name>
+    <description>دو تا دوست رباتیک بامزه که به فارسی حرف می‌زنن، بازی می‌کنن و کلی رمز مخفی دارن.</description>
+    <author email="you@example.com" href="https://example.com">Your Name</author>
+
+    <content src="index.html" />
+    <access origin="*" />
+    <allow-intent href="http://*/*" />
+    <allow-intent href="https://*/*" />
+    <allow-navigation href="*" />
+
+    <!-- فول‌اسکرین و ظاهر -->
+    <preference name="Fullscreen" value="true" />
+    <preference name="Orientation" value="portrait" />
+    <preference name="DisallowOverscroll" value="true" />
+    <preference name="BackgroundColor" value="0xff0c1224" />
+    <preference name="StatusBarOverlaysWebView" value="true" />
+    <preference name="StatusBarBackgroundColor" value="#0c1224" />
+    <preference name="StatusBarStyle" value="lightcontent" />
+    <preference name="AndroidWindowSplashScreenBackground" value="#0c1224" />
+    <preference name="android-minSdkVersion" value="22" />
+    <preference name="android-targetSdkVersion" value="34" />
+    <preference name="AndroidLaunchMode" value="singleTop" />
+
+    <!-- اجازه‌ی اجرا بدون اتصال به اینترنت -->
+    <preference name="AndroidInsecureFileModeEnabled" value="true" />
+
+    <platform name="android">
+        <!-- دسترسی‌های لازم: میکروفون (واکنش به صدا)، لرزش، تنظیم صدا -->
+        <config-file target="AndroidManifest.xml" parent="/manifest">
+            <uses-permission android:name="android.permission.RECORD_AUDIO" />
+            <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+            <uses-permission android:name="android.permission.VIBRATE" />
+            <uses-permission android:name="android.permission.INTERNET" />
+        </config-file>
+        <edit-config target="android:allowBackup" file="AndroidManifest.xml" mode="merge">
+            <application android:allowBackup="true" android:hardwareAccelerated="true" />
+        </edit-config>
+
+        <icon density="ldpi" src="icon.png" />
+        <icon density="mdpi" src="icon.png" />
+        <icon density="hdpi" src="icon.png" />
+        <icon density="xhdpi" src="icon.png" />
+        <icon density="xxhdpi" src="icon.png" />
+        <icon density="xxxhdpi" src="icon.png" />
+    </platform>
+
+    <icon src="icon.png" />
+
+    <plugin name="cordova-plugin-statusbar" spec="^4.0.0" />
+    <plugin name="cordova-plugin-fullscreen" spec="^1.3.0" />
+    <plugin name="cordova-plugin-vibration" spec="^3.1.1" />
+    <plugin name="cordova-plugin-device" spec="^2.1.0" />
+
+    <!-- پلاگین تبلیغات تپسل (ایرانی) - برای کسب درآمد از تبلیغات -->
+    <plugin name="tapsell-v3-cordova-plugin" spec="^3.0.25" />
+</widget>

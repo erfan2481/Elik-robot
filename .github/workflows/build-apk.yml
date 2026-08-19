@@ -1,0 +1,85 @@
+name: Build APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Setup JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Cordova
+        run: npm install -g cordova
+
+      - name: Fetch offline fonts
+        run: |
+          mkdir -p www/fonts/files
+          curl -sL -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36" \
+            "https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;600;700;900&family=Press+Start+2P&display=swap" \
+            -o www/fonts/raw.css
+          python3 - << 'PYEOF'
+          import re, os, urllib.request
+
+          with open('www/fonts/raw.css', encoding='utf-8') as f:
+              css = f.read()
+
+          urls = re.findall(r'url\((https://fonts\.gstatic\.com/[^)]+)\)', css)
+          os.makedirs('www/fonts/files', exist_ok=True)
+
+          for i, url in enumerate(urls):
+              fname = f'font{i}.woff2'
+              urllib.request.urlretrieve(url, f'www/fonts/files/{fname}')
+              css = css.replace(url, f'files/{fname}')
+              print(f'downloaded {fname} <- {url}')
+
+          with open('www/fonts/vazirmatn.css', 'w', encoding='utf-8') as f:
+              f.write(css)
+
+          os.remove('www/fonts/raw.css')
+          PYEOF
+          echo "---- www/fonts/vazirmatn.css ----"
+          cat www/fonts/vazirmatn.css
+          echo "---- downloaded font files ----"
+          ls -la www/fonts/files
+
+      - name: Add Android platform
+        run: cordova platform add android
+
+      - name: Add plugins
+        run: |
+          cordova plugin add cordova-plugin-statusbar || true
+          cordova plugin add cordova-plugin-fullscreen || true
+          cordova plugin add cordova-plugin-vibration || true
+          cordova plugin add cordova-plugin-device || true
+          cordova plugin add tapsell-v3-cordova-plugin || true
+
+      - name: Build APK (debug, always works without signing)
+        run: cordova build android
+
+      - name: Build APK (release, unsigned)
+        run: cordova build android --release -- --packageType=apk
+        continue-on-error: true
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: eilik-robots-apk
+          path: platforms/android/app/build/outputs/apk/**/*.apk

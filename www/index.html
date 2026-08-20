@@ -2027,22 +2027,35 @@
     100%{transform:scale(1);}
   }
 
-  /* dancing: full-body groove + kicking legs + waving arms */
-  .robot.dance .pose{animation:dance .62s var(--ease-life) infinite;}
+  .robot.dance .pose{animation:dance var(--dance-speed, .62s) var(--ease-life) infinite;}
   @keyframes dance{
     0%{transform:translateY(0) rotate(-7deg);}
     50%{transform:translateY(-13px) rotate(7deg);}
     100%{transform:translateY(0) rotate(-7deg);}
   }
-  .robot.dance .arm-l{animation:waveL .62s var(--ease-life) infinite;}
-  .robot.dance .arm-r{animation:waveR .62s var(--ease-life) infinite;}
+  .robot.dance .arm-l{animation:waveL var(--dance-speed, .62s) var(--ease-life) infinite;}
+  .robot.dance .arm-r{animation:waveR var(--dance-speed, .62s) var(--ease-life) infinite;}
   @keyframes waveL{0%,100%{transform:rotate(-150deg);}50%{transform:rotate(-100deg);}}
   @keyframes waveR{0%,100%{transform:rotate(150deg);}50%{transform:rotate(100deg);}}
-  .robot.dance .leg:nth-child(1){animation:kickL .5s var(--ease-life) infinite;}
-  .robot.dance .leg:nth-child(2){animation:kickR .5s var(--ease-life) infinite;}
+  .robot.dance .leg:nth-child(1){animation:kickL var(--kick-speed, .5s) var(--ease-life) infinite;}
+  .robot.dance .leg:nth-child(2){animation:kickR var(--kick-speed, .5s) var(--ease-life) infinite;}
   @keyframes kickL{0%,100%{transform:translateY(0) rotate(0);}50%{transform:translateY(-6px) rotate(-14deg);}}
   @keyframes kickR{0%,100%{transform:translateY(0) rotate(0);}50%{transform:translateY(-6px) rotate(14deg);}}
 
+  .robot.dance.slow .pose{animation:danceSlow var(--dance-speed, 1.6s) ease-in-out infinite;}
+  @keyframes danceSlow{
+    0%{transform:translateY(0) rotate(-4deg);}
+    50%{transform:translateY(-4px) rotate(4deg);}
+    100%{transform:translateY(0) rotate(-4deg);}
+  }
+  .robot.dance.slow .arm-l{animation:swayL var(--dance-speed, 1.6s) ease-in-out infinite;}
+  .robot.dance.slow .arm-r{animation:swayR var(--dance-speed, 1.6s) ease-in-out infinite;}
+  @keyframes swayL{0%,100%{transform:rotate(-130deg);}50%{transform:rotate(-115deg);}}
+  @keyframes swayR{0%,100%{transform:rotate(130deg);}50%{transform:rotate(115deg);}}
+  .robot.dance.slow .leg:nth-child(1),.robot.dance.slow .leg:nth-child(2){animation:none;}
+
+  .robot.dance.hype .head{animation:headBob var(--dance-speed, .3s) var(--ease-life) infinite;}
+  @keyframes headBob{0%,100%{transform:translateY(0);}50%{transform:translateY(-5px);}}
   /* hugging */
   .robot-a.hug{transform:translateX(29px) rotate(-3deg);}
   .robot-b.hug{transform:translateX(-29px) rotate(3deg);}

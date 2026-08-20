@@ -12021,9 +12021,8 @@ var INTERSTITIAL_MIN_GAP_MS = 3 * 60 * 1000; // حداقل ۳ دقیقه بین 
 var lastInterstitialShown = 0;
 var adCommandCounter = 0; // شمارنده‌ی دستورهایی که کاربر به ربات‌ها داده
 
-function requestNextInterstitial(){
-  if (typeof tapsell === 'undefined') return;
-  tapsell.requestAd(TAPSELL_INTERSTITIAL_ZONE, false, function(result){
+//function requestNextInterstitial(){
+  if (typeof tapsell === 'undefined') return;  tapsell.requestAd(TAPSELL_INTERSTITIAL_ZONE, false, function(result){
     if (result && result['action'] === 'onAdAvailable') {
       interstitialResponseId = result['adId'];
     }

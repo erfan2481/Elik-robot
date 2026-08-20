@@ -2027,6 +2027,11 @@
     100%{transform:scale(1);}
   }
 
+  /* dancing: full-body groove + kicking legs + waving arms — speed follows
+     the detected song tempo via the --dance-speed/--kick-speed custom
+     properties (set from JS), so the same base moves feel slow for a
+     ballad and fast for an energetic/rap track without needing a whole
+     separate animation per tempo */
   .robot.dance .pose{animation:dance var(--dance-speed, .62s) var(--ease-life) infinite;}
   @keyframes dance{
     0%{transform:translateY(0) rotate(-7deg);}
@@ -2042,6 +2047,8 @@
   @keyframes kickL{0%,100%{transform:translateY(0) rotate(0);}50%{transform:translateY(-6px) rotate(-14deg);}}
   @keyframes kickR{0%,100%{transform:translateY(0) rotate(0);}50%{transform:translateY(-6px) rotate(14deg);}}
 
+  /* slow/ballad mode: gentle side-to-side sway, legs stay still, no kicking —
+     used for calm/slow music instead of the energetic kick-dance above */
   .robot.dance.slow .pose{animation:danceSlow var(--dance-speed, 1.6s) ease-in-out infinite;}
   @keyframes danceSlow{
     0%{transform:translateY(0) rotate(-4deg);}
@@ -2054,8 +2061,11 @@
   @keyframes swayR{0%,100%{transform:rotate(130deg);}50%{transform:rotate(115deg);}}
   .robot.dance.slow .leg:nth-child(1),.robot.dance.slow .leg:nth-child(2){animation:none;}
 
+  /* hype/rap mode: bigger amplitude head-bob layered on top of the normal
+     fast dance, for a punchier reaction to high-energy tracks */
   .robot.dance.hype .head{animation:headBob var(--dance-speed, .3s) var(--ease-life) infinite;}
   @keyframes headBob{0%,100%{transform:translateY(0);}50%{transform:translateY(-5px);}}
+
   /* hugging */
   .robot-a.hug{transform:translateX(29px) rotate(-3deg);}
   .robot-b.hug{transform:translateX(-29px) rotate(3deg);}
@@ -2498,6 +2508,11 @@
            noise/clap nearby — the phone's own microphone is the direct match,
            analyzed locally in the browser only, nothing recorded or sent anywhere -->
       <button id="micBtn" class="icon-btn" title="واکنش به صدا رو فعال کن">🎤</button>
+      <!-- real speech recognition: unlike micBtn above (which only reacts to
+           volume/rhythm), this actually converts spoken Persian into text and
+           feeds it into the exact same runCommand() pipeline typed messages
+           use, so anything you can type you can also just say out loud -->
+      <button id="voiceBtn" class="icon-btn" title="با صدات باهاشون حرف بزن">🗣️</button>
       <!-- real Eilik has a vibration/motion sensor and reacts to being physically
            shaken — on a phone the closest match is the device's own accelerometer,
            gated behind a button because iOS requires an explicit tap to grant
@@ -11881,15 +11896,76 @@ function startMic(stream){
     let beatTimes = [];
     let lastBeatPeak = 0;
     let lastGrooveStarted = 0;
+    let musicDanceRunning = false;
+    // returns the average ms between recent beats (≈ tempo) if the recent
+    // peaks look like real music, or null if it's too sparse/irregular —
+    // only needs 3 beats now (was 4) so the reaction kicks in sooner
     function checkForMusic(now){
-      if(beatTimes.length < 4) return false;
+      const recent = beatTimes.filter(t=> now - t < 4000);
+      if(recent.length < 3) return null;
       const gaps = [];
-      for(let i=1;i<beatTimes.length;i++) gaps.push(beatTimes[i]-beatTimes[i-1]);
+      for(let i=1;i<recent.length;i++) gaps.push(recent[i]-recent[i-1]);
       const mean = gaps.reduce((s,g)=>s+g,0)/gaps.length;
-      if(mean < 250 || mean > 1100) return false; // outside plausible musical tempo range
+      if(mean < 220 || mean > 1200) return null; // outside plausible musical tempo range
       const variance = gaps.reduce((s,g)=> s+(g-mean)*(g-mean), 0)/gaps.length;
       const evenness = Math.sqrt(variance)/mean;
-      return evenness < 0.35; // fairly regular spacing, not random noise
+      return evenness < 0.4 ? mean : null; // fairly regular spacing, not random noise
+    }
+    // turns an average beat-gap into a dance "feel": slow/ballad, medium, or
+    // fast/rap — each with its own animation speed (fed to the --dance-speed
+    // and --kick-speed CSS variables) so the SAME dance moves genuinely feel
+    // slower or faster depending on the actual song, not a fixed 120bpm
+    function classifyTempo(meanGapMs){
+      if(meanGapMs > 620) return { tier:'slow', danceSpeed:(meanGapMs*1.9/1000).toFixed(2)+'s', kickSpeed:null };
+      if(meanGapMs < 380) return { tier:'fast', danceSpeed:(meanGapMs*1.15/1000).toFixed(2)+'s', kickSpeed:(meanGapMs*0.95/1000).toFixed(2)+'s' };
+      return { tier:'medium', danceSpeed:(meanGapMs*1.25/1000).toFixed(2)+'s', kickSpeed:(meanGapMs*1.0/1000).toFixed(2)+'s' };
+    }
+    const MUSIC_TIER_LINES = {
+      slow:   { lines:['وای چه آهنگ آرومی... باهاش می‌رقصم یواش 😌','یه رقص ملایم بلدم براش 🎶'], eyes:'love',    mood:'رقص ملایم' },
+      medium: { lines:['اوه این ریتم خوبه! باهاش می‌رقصم 🎵','بزن بریم رو همین ریتم!'],        eyes:'dancer', mood:'رو ریتمه' },
+      fast:   { lines:['وای چه آهنگ توپیه! نمی‌تونم جلو خودمو بگیرم 🔥','بترکونیم روش! 🎉'],      eyes:'delighted', mood:'پرانرژی' }
+    };
+    // actually dances (reuses the full-body "دنس" animation) instead of just
+    // showing music-note emoji, and keeps re-sampling the live tempo every
+    // ~1.1s so it can shift from a slow intro to a faster chorus mid-song —
+    // ends on its own once beats stop arriving (song paused/changed)
+    async function actMusicDance(){
+      if(busy || musicDanceRunning) return;
+      if(poweredOff.a || poweredOff.b || docked.a || docked.b) return;
+      musicDanceRunning = true; busy = true;
+      clearActionClasses();
+      let lastTier = null;
+      for(let round=0; round<10; round++){
+        const now = Date.now();
+        const meanGap = checkForMusic(now);
+        if(meanGap === null) break; // music stopped — wind down early
+        const t = classifyTempo(meanGap);
+        if(t.tier !== lastTier){
+          lastTier = t.tier;
+          robotA.classList.remove('slow','hype'); robotB.classList.remove('slow','hype');
+          robotA.classList.add('dance'); robotB.classList.add('dance');
+          if(t.tier === 'slow'){ robotA.classList.add('slow'); robotB.classList.add('slow'); }
+          if(t.tier === 'fast'){ robotA.classList.add('hype'); robotB.classList.add('hype'); }
+          robotA.style.setProperty('--dance-speed', t.danceSpeed);
+          robotB.style.setProperty('--dance-speed', t.danceSpeed);
+          if(t.kickSpeed){
+            robotA.style.setProperty('--kick-speed', t.kickSpeed);
+            robotB.style.setProperty('--kick-speed', t.kickSpeed);
+          }
+          const info = MUSIC_TIER_LINES[t.tier];
+          setEyes(eyeA, info.eyes); setEyes(eyeB, info.eyes);
+          setMood(moodA, info.mood); setMood(moodB, info.mood);
+          say(bubbleA, pick(info.lines), 2200);
+        }
+        spawnParticle(round % 2 === 0 ? robotA : robotB, t.tier === 'fast' ? '🔥' : '🎵');
+        await wait(1100);
+      }
+      robotA.classList.remove('dance','slow','hype');
+      robotB.classList.remove('dance','slow','hype');
+      robotA.style.removeProperty('--dance-speed'); robotA.style.removeProperty('--kick-speed');
+      robotB.style.removeProperty('--dance-speed'); robotB.style.removeProperty('--kick-speed');
+      setEyes(eyeA, null); setEyes(eyeB, null);
+      musicDanceRunning = false; busy = false;
     }
     let pollFrame = 0;
     function poll(){
@@ -11910,11 +11986,10 @@ function startMic(stream){
         lastBeatPeak = now;
         beatTimes.push(now);
         beatTimes = beatTimes.filter(t=> now - t < 4000);
-        if(!busy && now - lastGrooveStarted > 9000 && checkForMusic(now)
+        if(!busy && !musicDanceRunning && now - lastGrooveStarted > 3000 && checkForMusic(now) !== null
            && !(poweredOff.a || poweredOff.b) && !docked.a && !docked.b){
           lastGrooveStarted = now;
-          beatTimes = [];
-          actGroove();
+          actMusicDance();
         }
       }
       if(level > baseline + 26 && level > 18 && now - lastSoundAt > 1800){
@@ -11941,6 +12016,52 @@ micBtn.addEventListener('click', ()=>{
     .then(startMic)
     .catch(()=>{ micBtn.title = 'اجازه داده نشد'; });
 });
+
+// ---------- real voice commands (speech-to-text, Persian) ----------
+// distinct from micBtn/startMic above (which only reacts to raw sound
+// volume/rhythm) — this actually converts spoken Persian into text via
+// cordova-plugin-speechrecognition and feeds the recognized sentence into
+// runCommand(), the exact same function typed messages go through, so a
+// spoken "سلام" is handled identically to typing "سلام" and pressing اجرا
+const voiceBtn = document.getElementById('voiceBtn');
+let voiceListening = false;
+function startVoiceListening(){
+  if(voiceListening) return;
+  const sr = window.plugins && window.plugins.speechRecognition;
+  if(!sr){
+    voiceBtn.title = 'این قابلیت فقط توی اپ نصب‌شده کار می‌کنه، نه توی مرورگر';
+    return;
+  }
+  sr.hasPermission(has=>{
+    const go = ()=>{
+      voiceListening = true;
+      voiceBtn.classList.add('on');
+      voiceBtn.title = 'دارم گوش می‌دم... حرف بزن';
+      sr.startListening(
+        result=>{
+          voiceListening = false;
+          voiceBtn.classList.remove('on');
+          voiceBtn.title = 'با صدات باهاشون حرف بزن';
+          const heard = result && result[0];
+          if(heard){
+            cmdInput.value = heard;
+            runWithScroll(()=> runCommand(heard));
+            cmdInput.value = '';
+          }
+        },
+        err=>{
+          voiceListening = false;
+          voiceBtn.classList.remove('on');
+          voiceBtn.title = 'متوجه نشدم، دوباره امتحان کن';
+        },
+        { language:'fa-IR', matches:1, showPopup:false }
+      );
+    };
+    if(has) go();
+    else sr.requestPermission(()=> go(), ()=>{ voiceBtn.title = 'اجازه داده نشد'; });
+  }, ()=>{ voiceBtn.title = 'مشکلی توی دسترسی به میکروفون بود'; });
+}
+voiceBtn.addEventListener('click', startVoiceListening);
 
 // ---------- ambient light awareness ----------
 // the real Eilik has a light sensor and dims/behaves sleepier in a dark room —
@@ -12034,9 +12155,8 @@ var INTERSTITIAL_MIN_GAP_MS = 3 * 60 * 1000; // حداقل ۳ دقیقه بین 
 var lastInterstitialShown = 0;
 var adCommandCounter = 0; // شمارنده‌ی دستورهایی که کاربر به ربات‌ها داده
 
-function requestNextInterstitial(){
-  if (typeof tapsell === 'undefined') return;
-  tapsell.requestAd(TAPSELL_INTERSTITIAL_ZONE, false, function(result){
+//function requestNextInterstitial(){
+  if (typeof tapsell === 'undefined') return;  tapsell.requestAd(TAPSELL_INTERSTITIAL_ZONE, false, function(result){
     if (result && result['action'] === 'onAdAvailable') {
       interstitialResponseId = result['adId'];
     }

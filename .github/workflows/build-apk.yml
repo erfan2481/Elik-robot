@@ -70,6 +70,7 @@ jobs:
           cordova plugin add cordova-plugin-vibration || true
           cordova plugin add cordova-plugin-device || true
           cordova plugin add cordova-plugin-androidx-adapter || true
+          cordova plugin add cordova-plugin-speechrecognition || true
 
       - name: Build APK (debug, always works without signing)
         run: cordova build android

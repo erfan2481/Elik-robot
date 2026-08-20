@@ -54,7 +54,5 @@
     <plugin name="cordova-plugin-device" spec="^2.1.0" />
 <plugin name="cordova-plugin-androidx-adapter" spec="^1.1.3" />
     
-    <!-- پلاگین تبلیغات تپسل (ایرانی) - برای کسب درآمد از تبلیغات -->
-    <plugin name="tapsell-v3-cordova-plugin" spec="^3.0.25" />
     <hook type="after_prepare" src="hooks/after_prepare/010_add_jetifier.js" />
 </widget>

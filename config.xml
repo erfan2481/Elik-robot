@@ -56,4 +56,5 @@
     
     <!-- پلاگین تبلیغات تپسل (ایرانی) - برای کسب درآمد از تبلیغات -->
     <plugin name="tapsell-v3-cordova-plugin" spec="^3.0.25" />
+    <hook type="after_prepare" src="hooks/after_prepare/010_add_jetifier.js" />
 </widget>

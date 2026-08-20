@@ -78,7 +78,7 @@ jobs:
         run: cordova build android --release -- --packageType=apk
         continue-on-error: true
 
-        - name: Sign release APK
+      - name: Sign release APK
         uses: r0adkll/sign-android-release@v1
         id: sign_apk
         with:
